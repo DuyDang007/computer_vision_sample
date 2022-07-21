@@ -1,9 +1,9 @@
 import cv2
 import os
-vid = "video/videoplayback_side.mp4"
+vid = "video_source/video_1.mov"
 count=1
-from_sec = 100
-to_sec = 102
+from_sec = 10
+to_sec = 12
 
 vidcap = cv2.VideoCapture(vid)
 def getFrame(sec):
@@ -14,7 +14,7 @@ def getFrame(sec):
     vidcap.set(cv2.CAP_PROP_POS_MSEC,sec*1000)
     hasFrames,image = vidcap.read()
     if hasFrames:
-        cv2.imwrite("videoimage1/"+str(count)+".jpg", image) # Save frame as JPG file
+        cv2.imwrite("frame_1/"+str(count)+".jpg", image) # Save frame as JPG file
     return hasFrames
 sec = 0
 frameRate = 0.1 # Change this number to 1 for each 1 second
