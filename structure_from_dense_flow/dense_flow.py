@@ -88,22 +88,21 @@ for i in img_list:
 
 
     # Create RGB image of Z
-    # bgr_zmap = np.zeros(shape=(scaled_size[0], scaled_size[1], 3))
-    # for y in range(scaled_size[0]):
-    #     for x in range(scaled_size[1]):
-    #         arctaned = round(math.atan(abs(zmap[y][x])*2.0) * 162.0)
-    #         # arctaned = abs(zmap[y][x])
-    #         if zmap[y][x] < 0:
-    #             bgr_zmap[y][x] = (0, 0, 255 - arctaned)
-    #         else:
-    #             bgr_zmap[y][x] = (255 - arctaned, 0, 0)
-    # bgr_zmap = bgr_zmap.astype(np.uint8)
+    bgr_zmap = np.zeros(shape=(scaled_size[0], scaled_size[1], 3))
+    for y in range(scaled_size[0]):
+        for x in range(scaled_size[1]):
+            arctaned = round(math.atan(abs(zmap[y][x])*2.0) * 162.0)
+            if zmap[y][x] < 0:
+                bgr_zmap[y][x] = (arctaned, arctaned, arctaned)
+            else:
+                bgr_zmap[y][x] = (arctaned, arctaned, arctaned)
+    bgr_zmap = bgr_zmap.astype(np.uint8)
 
     # Create BGR image of X
     bgr_xmap = np.zeros(shape=(scaled_size[0], scaled_size[1], 3))
     for y in range(scaled_size[0]):
         for x in range(scaled_size[1]):
-            arctaned = round(math.atan(abs(xmap[y][x]*20)) * 162.0)
+            arctaned = round(math.atan(abs(xmap[y][x]*20.0)) * 162.0)
             if xmap[y][x] < 0:
                 bgr_xmap[y][x] = (0, 0, arctaned)
             else:
@@ -117,10 +116,12 @@ for i in img_list:
     hsv[..., 2] = cv.normalize(mag, None, 0, 255, cv.NORM_MINMAX)
     bgr_flow = cv.cvtColor(hsv, cv.COLOR_HSV2BGR)
 
-    # img_final = np.vstack((bgr_flow, bgr_zmap, frame))
-    # cv.imshow("win", img_final)
+    img_final_1 = np.hstack((frame, bgr_flow)).astype(np.uint8)
+    img_final_2 = np.hstack((bgr_xmap, bgr_zmap)).astype(np.uint8)
+    img_final = np.vstack((img_final_1, img_final_2))
+    cv.imshow("win", img_final)
 
-    cv.imshow("win", bgr_xmap.astype(np.uint8))
+    # cv.imshow("win", bgr_xmap.astype(np.uint8))
 
     cv.waitKey(10)
 
