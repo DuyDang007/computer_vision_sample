@@ -1,10 +1,11 @@
+import os
 import numpy as np
 import cv2 as cv
 import math
 
 class TranslateVector:
     def __init__(self, x, y, z):
-        self.x, self.y, self.z = (z, y, z)
+        self.x, self.y, self.z = (x, y, z)
 
 class FlowVector:
     def __init__(self, x, y, u, v):
@@ -15,20 +16,18 @@ class FlowVector:
         return "x: " + str(self.x) + "  y: " + str(self.y) + "  u: " + str(self.u) + "  v: " + str(self.v)
 
 ##############################################
-img_list = ["101.jpg", "102.jpg", "103.jpg", "104.jpg", "105.jpg", "106.jpg", "107.jpg", "108.jpg", "109.jpg", "110.jpg", "111.jpg", "112.jpg", "113.jpg", "114.jpg", "115.jpg", "116.jpg", "117.jpg", "118.jpg", "119.jpg", "120.jpg", "121.jpg"]
+img_path = "../videoimage2/"
+img_list = [f for f in os.listdir(img_path) if os.path.isfile(os.path.join(img_path, f))]
 
-img_path = "./frame_1/"
 scaled_size = (240, 320)    # y, x
-tile = (1, 1)
+tile = (2, 2)
 # principal point
 px = scaled_size[1] / 2
 py = scaled_size[0] / 2
 
 # Camera setting
 f = 800
-trans = TranslateVector(0.0, 0.0, -0.1)
-
-previous = np.zeros(shape=scaled_size)
+trans = TranslateVector(0.0, 0.0, -1.0)
 
 ##############################################
 def best_vector_from_flow(flow_img) -> list:
@@ -74,14 +73,17 @@ def structure_from_vector(vector_list, flow_size:tuple) -> tuple:
     return x_map, y_map, z_map
 
 ##################################### MAIN ######################################
+previous = np.zeros(shape=scaled_size)
+previous_flow = np.zeros(shape=scaled_size)
 for i in img_list:
     # Open files and convert to Dense flow
     frame = cv.imread(img_path + i)
     frame = cv.resize(frame, (scaled_size[1], scaled_size[0]))
     hsv = np.zeros_like(frame)
     frame_gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
-    flow = cv.calcOpticalFlowFarneback(previous, frame_gray, None, 0.5, 3, 15, 3, 5, 1.2, 0)
+    flow = cv.calcOpticalFlowFarneback(previous, frame_gray, previous_flow, 0.5, 3, 15, 3, 5, 1.2, 0)
     previous = frame_gray
+    previous_flow = flow
     # Extract best vectors
     best_flow = best_vector_from_flow(flow)
     xmap, ymap, zmap = structure_from_vector(best_flow, scaled_size)
@@ -91,7 +93,7 @@ for i in img_list:
     bgr_zmap = np.zeros(shape=(scaled_size[0], scaled_size[1], 3))
     for y in range(scaled_size[0]):
         for x in range(scaled_size[1]):
-            arctaned = round(math.atan(abs(zmap[y][x])*2.0) * 162.0)
+            arctaned = round(math.atan(abs(zmap[y][x])*0.5) * 162.0)
             if zmap[y][x] < 0:
                 bgr_zmap[y][x] = (arctaned, arctaned, arctaned)
             else:
@@ -106,7 +108,7 @@ for i in img_list:
             if xmap[y][x] < 0:
                 bgr_xmap[y][x] = (0, 0, arctaned)
             else:
-                bgr_xmap[y][x] = (arctaned, 0, 0)
+                bgr_xmap[y][x] = (0, arctaned, 0)
             # print(xmap[y][x])
             
 
@@ -123,6 +125,6 @@ for i in img_list:
 
     # cv.imshow("win", bgr_xmap.astype(np.uint8))
 
-    cv.waitKey(10)
+    cv.waitKey(1)
 
 cv.destroyAllWindows()

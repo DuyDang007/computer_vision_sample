@@ -1,10 +1,13 @@
+import os, sys
 import cv2
-import os
-vid = "video_source/video_1.mov"
-count=1
-from_sec = 10
-to_sec = 12
 
+vid = os.path.abspath(sys.argv[1])
+output_dir = os.path.abspath(sys.argv[2])
+from_sec = int(sys.argv[3])
+to_sec = int(sys.argv[4])
+frameRate = 0.1 # Change this number to 1 for each 1 second
+
+count=1
 vidcap = cv2.VideoCapture(vid)
 def getFrame(sec):
     if sec < from_sec:
@@ -14,10 +17,9 @@ def getFrame(sec):
     vidcap.set(cv2.CAP_PROP_POS_MSEC,sec*1000)
     hasFrames,image = vidcap.read()
     if hasFrames:
-        cv2.imwrite("frame_1/"+str(count)+".jpg", image) # Save frame as JPG file
+        cv2.imwrite(os.path.join(output_dir, str(count) + ".jpg"), image) # Save frame as JPG file
     return hasFrames
 sec = 0
-frameRate = 0.1 # Change this number to 1 for each 1 second
 
 success = getFrame(sec)
 while success:
