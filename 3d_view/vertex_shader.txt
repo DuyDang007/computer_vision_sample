@@ -1,6 +1,11 @@
 #version 330 core
 layout (location = 0) in vec3 aPos;
+layout (location = 1) in vec3 aCol;
+
+out vec3 vCol;
+
 void main()
 {
-    gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);
+    gl_Position = vec4(aPos.x / 4096.0, aPos.y / 4096.0, aPos.z / 4096.0, 1.0);
+    vCol = vec3(aCol.x / 255.0, aCol.y / 255.0, aCol.z / 255.0);
 }

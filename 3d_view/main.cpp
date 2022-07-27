@@ -33,26 +33,25 @@ void getInput(GLFWwindow *window)
     }
 }
 
-string readFromFile(const char *file_name)
+char *readFromFile(const char *file_name)
 {
     // Read text from file to buffer
-    string str_out;
+    size_t filesize;
     ifstream file_stream;
     file_stream.open(file_name, ios::in);
+    file_stream.seekg(0, file_stream.end);
+    filesize = file_stream.tellg();
+    file_stream.seekg(0, file_stream.beg);
     
-    while (file_stream.good())
-    {
-        string line;
-        getline(file_stream, line);
-        str_out.append(line + "\n");
-    }
-    printf("read done\n");
-    
+    char *str_out = new char[filesize+1];
+    memset(str_out, 0, filesize+1);
+    file_stream.read(str_out, filesize);
+
     file_stream.close();
     return str_out;
 }
 
-int main()
+int main(int argc, char** argv)
 {
     GLboolean ret;
     ret = glfwInit();
@@ -86,10 +85,19 @@ int main()
     // Callback function on window size change
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
-    float vertices[] = {
-        -0.5f, -0.5f, 0.0f,
-        0.5f, -0.5f, 0.0f,
-        0.0f, 0.5f, 0.0f};
+    // Read vertices from file
+    size_t vfilesize;
+    ifstream vertex_file;
+    vertex_file.open(argv[1], ios::in);
+    vertex_file.seekg(0, vertex_file.end);
+    vfilesize = vertex_file.tellg();
+    vertex_file.seekg(0, vertex_file.beg);
+    unsigned int vertices_num = (unsigned int)(vfilesize / (6 * sizeof(float)));
+
+    float *vertices = new float[vertices_num * 6];
+    vertex_file.read((char*)vertices, vfilesize);
+
+    vertex_file.close();
 
     // Generate VAO
     GLuint VAO;
@@ -99,21 +107,18 @@ int main()
     GLuint vertex_buffer_obj_p;
     glGenBuffers(1, &vertex_buffer_obj_p);
     glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer_obj_p);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GL_FLOAT), (void *)0);
+    glBufferData(GL_ARRAY_BUFFER, vertices_num * 6, vertices, GL_STATIC_DRAW);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GL_FLOAT), (void *)0);
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GL_FLOAT), (void *)(3 * sizeof(GL_FLOAT)));
     glEnableVertexAttribArray(0);
+    glEnableVertexAttribArray(1);
 
     // Shader processing
     int success;
     char infoLog[512];
 
     // Read vertex shader from file
-    const char *vertex_shader_source = "#version 330 core\n"
-        "layout (location = 0) in vec3 aPos;\n"
-        "void main()\n"
-        "{\n"
-        "   gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);\n"
-        "}\0";
+    const char *vertex_shader_source = readFromFile("vertex_shader.txt");
 
     // Create vertex shader
     GLuint vertex_shader;
@@ -129,13 +134,25 @@ int main()
              << infoLog << endl;
     }
 
+    // Read geometry shader from file
+    const char *geo_shader_source = readFromFile("geometry_shader.txt");
+
+    // Create geometry shader
+    GLuint geo_shader;
+    geo_shader = glCreateShader(GL_GEOMETRY_SHADER);
+    glShaderSource(geo_shader, 1, &geo_shader_source, NULL);
+    glCompileShader(geo_shader);
+
+    glGetShaderiv(geo_shader, GL_COMPILE_STATUS, &success);
+    if (!success)
+    {
+        glGetShaderInfoLog(geo_shader, 512, NULL, infoLog);
+        cout << "ERROR::SHADER::GEO::COMPILATION_FAILED\n"
+             << infoLog << endl;
+    }
+
     // Read fragment shader
-    const char *fragment_shader_source = "#version 330 core\n"
-        "out vec4 FragColor;\n"
-        "void main()\n"
-        "{\n"
-        "    FragColor = vec4(1.0f, 0.5f, 0.2f, 1.0f);\n"
-        "}\n";
+    const char *fragment_shader_source = readFromFile("fragment_shader.txt");
 
     // Create fragment shader
     GLuint fragment_shader;
@@ -155,6 +172,7 @@ int main()
     GLuint shader_program;
     shader_program = glCreateProgram();
     glAttachShader(shader_program, vertex_shader);
+    glAttachShader(shader_program, geo_shader);
     glAttachShader(shader_program, fragment_shader);
     glLinkProgram(shader_program);
 
@@ -172,22 +190,19 @@ int main()
     // free(vertex_shader_str);
     // free(fragment_shader_str);
     glDeleteShader(vertex_shader);
+    glDeleteShader(geo_shader);
     glDeleteShader(fragment_shader);
-
-    // Drawing preparation
-    glBindVertexArray(VAO);
-    glDrawArrays(GL_TRIANGLES, 0, 3);
 
     /* -------------------------------- Main render ------------------------------*/
     while (!glfwWindowShouldClose(window))
     {
         getInput(window);
 
-        glClearColor(0.1, 0.1, 0.15, 1.0);
+        glClearColor(0.9, 0.8, 0.85, 1.0);
         glClear(GL_COLOR_BUFFER_BIT);
 
         glBindVertexArray(VAO);
-        glDrawArrays(GL_TRIANGLES, 0, 3);
+        glDrawArrays(GL_POINTS, 0, vertices_num);
 
         glfwSwapBuffers(window);
         glfwPollEvents();
