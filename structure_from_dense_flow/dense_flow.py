@@ -17,7 +17,7 @@ class FlowVector:
         return "x: " + str(self.x) + "  y: " + str(self.y) + "  u: " + str(self.u) + "  v: " + str(self.v)
 
 ##############################################
-img_path = "../videoimage1/"
+img_path = "../videoimage5/"
 img_list = [f for f in os.listdir(img_path) if os.path.isfile(os.path.join(img_path, f))]
 
 scaled_size = (240, 320)    # y, x
@@ -27,8 +27,8 @@ px = scaled_size[1] / 2
 py = scaled_size[0] / 2
 
 # Camera setting
-f = 400
-trans = TranslateVector(0.8, 0.0, 0.0)
+f = 200
+trans = TranslateVector(0.1, 0.0, 0.0)
 
 ##############################################
 def best_vector_from_flow(flow_img) -> list:
@@ -66,14 +66,15 @@ def structure_from_vector(vector_list, flow_size:tuple) -> tuple:
         if rf.v != 0:
             zy = (trans.y * f - trans.z * (py - (rf.y + rf.v))) / rf.v
             count += 1.0
-        z_map[vector.y][vector.x] = (zx + zy) / count
+        if count > 0:
+            z_map[vector.y][vector.x] = (zx + zy) / count
         
         if z_map[vector.y][vector.x] > 1024.0:
             z_map[vector.y][vector.x] = 1024.0
         if z_map[vector.y][vector.x] <= 0.0:
             z_map[vector.y][vector.x] = 1024.0
 
-        x_map[vector.y][vector.x] = (px - rf.x) * abs(z_map[vector.y][vector.x]) / f
+        x_map[vector.y][vector.x] = (px - rf.x) * z_map[vector.y][vector.x] / f
         y_map[vector.y][vector.x] = (py - rf.y) * z_map[vector.y][vector.x] / f
     
     return x_map, y_map, z_map
@@ -87,9 +88,10 @@ for i in img_list:
     frame = cv.resize(frame, (scaled_size[1], scaled_size[0]))
     hsv = np.zeros_like(frame)
     frame_gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
-    flow = cv.calcOpticalFlowFarneback(previous, frame_gray, previous_flow, 0.5, 3, 15, 3, 5, 1.2, 0)
+    flow = cv.calcOpticalFlowFarneback(previous, frame_gray, previous_flow, 0.5, 5, 5, 5, 7, 1.2, 0)
     previous = frame_gray
     previous_flow = flow
+    flow = cv.GaussianBlur(flow, (15, 15), 0)
     # Extract best vectors
     best_flow = best_vector_from_flow(flow)
     xmap, ymap, zmap = structure_from_vector(best_flow, scaled_size)
@@ -110,7 +112,7 @@ for i in img_list:
     bgr_xmap = np.zeros(shape=(scaled_size[0], scaled_size[1], 3))
     for y in range(scaled_size[0]):
         for x in range(scaled_size[1]):
-            arctaned = round(math.atan(abs(xmap[y][x]*20.0)) * 162.0)
+            arctaned = round(math.atan(abs(xmap[y][x]*2.0)) * 162.0)
             if xmap[y][x] < 0:
                 bgr_xmap[y][x] = (0, 0, arctaned)
             else:
@@ -130,10 +132,10 @@ for i in img_list:
     cv.imshow("win", img_final)
 
     # Buffer to file
-    with open(img_path + i + ".bin", "wb") as im_file:
+    with open(img_path + "/bin/" + i + ".bin", "wb") as im_file:
         for y in range(scaled_size[0]):
             for x in range(scaled_size[1]):
-                buff = struct.pack("ffffff", xmap[y][x], ymap[y][x], zmap[y][x], frame[y][x][2], frame[y][x][1], frame[y][x][0])
+                buff = struct.pack("ffffff", x, y, bgr_zmap[y][x][0], frame[y][x][2], frame[y][x][1], frame[y][x][0])
                 im_file.write(buff)
 
     cv.waitKey(1)
