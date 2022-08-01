@@ -10,7 +10,7 @@ out vec3 vCol;
 
 void main()
 {
-    vec3 tmpPos = vec3(pos.x/5, pos.y, pos.z/10);
-    gl_Position = projection * view * model * vec4(tmpPos/100, 1.0);
+    vec3 tmpPos = vec3(pos.x, -pos.y, -pos.z);
+    gl_Position = projection * view * model * vec4(pos.x/100.0, -pos.y/100.0, -pos.z/20.0, 1.0);
     vCol = vec3(color.x / 255, color.y / 255, color.z / 255);
 }

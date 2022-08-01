@@ -47,11 +47,11 @@ void getInput(GLFWwindow *window)
     }
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
     {
-        movez = 0.02;
+        movez = -0.02;
     }
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
     {
-        movez = -0.02;
+        movez = 0.02;
     }
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
     {
@@ -59,24 +59,21 @@ void getInput(GLFWwindow *window)
     }
 }
 
-char *readBinFromFile(const char *file_name)
+void readBinFromFile(const char *file_name, void** buffer_ptr, size_t *filesize)
 {
     // Read text from file to buffer
-    char *str_out;
-    size_t filesize;
     ifstream file_stream;
     file_stream.open(file_name, ifstream::in);
     file_stream.seekg(0, file_stream.end);
-    filesize = file_stream.tellg();
+    *filesize = file_stream.tellg();
     file_stream.seekg(0, file_stream.beg);
 
-    printf("Bin file size: %u\n", filesize);
+    printf("Bin file size: %u\n", *filesize);
 
-    str_out = new char[filesize];
-    file_stream.read(str_out, filesize);
-    
+    *buffer_ptr = malloc(*filesize);
+    file_stream.read((char*)*buffer_ptr, *filesize);
+
     file_stream.close();
-    return str_out;
 }
 
 char *readTextFromFile(const char *file_name)
@@ -132,8 +129,12 @@ int main(int argc, char **argv)
     // Callback function on window size change
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
-    float *vertices = (float*)readBinFromFile(argv[1]);
-    uint32_t vertices_num = (*(&vertices + 1) - vertices) / 6;
+    float *vertices;
+    size_t vertices_filesize;
+
+    readBinFromFile(argv[1], (void**)&vertices, &vertices_filesize);
+    uint32_t vertices_num = vertices_filesize / (6 * sizeof(GL_FLOAT));
+    printf("%d vertices to draw\n", vertices_num);
 
     // Generate VAO
     GLuint VAO;
@@ -143,11 +144,12 @@ int main(int argc, char **argv)
     GLuint vertex_buffer_obj_p;
     glGenBuffers(1, &vertex_buffer_obj_p);
     glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer_obj_p);
-    glBufferData(GL_ARRAY_BUFFER, 76800, vertices, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, vertices_filesize, vertices, GL_STATIC_DRAW);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GL_FLOAT), (void *) 0);
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GL_FLOAT), (void *)(3 * sizeof(GL_FLOAT)));
     glEnableVertexAttribArray(0);
     glEnableVertexAttribArray(1);
+    printf("Setup Vertex array done %d\n", sizeof(vertices));
 
     // Shader processing
     int success;
@@ -228,7 +230,7 @@ int main(int argc, char **argv)
 
     // Prepare transform matrices
     glm::mat4 model = glm::mat4(1.0f);
-    model = glm::rotate(model, glm::radians(-55.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+    model = glm::rotate(model, glm::radians(20.0f), glm::vec3(1.0f, 0.0f, 0.0f));
     glm::mat4 view = glm::mat4(1.0f);
     // note that we're translating the scene in the reverse direction of where we want to move
     view = glm::translate(view, glm::vec3(0.0f, 0.0f, -3.0f));
@@ -245,6 +247,7 @@ int main(int argc, char **argv)
     float camy = 0;
     float camz = 0;
     /* -------------------------------- Main render ------------------------------*/
+    printf("Start render\n");
     while (!glfwWindowShouldClose(window))
     {
         getInput(window);
@@ -276,7 +279,7 @@ int main(int argc, char **argv)
         glUniformMatrix4fv(projMat, 1, GL_FALSE, glm::value_ptr(projection));
 
         glBindVertexArray(VAO);
-        glDrawArrays(GL_POINTS, 0, 76800);
+        glDrawArrays(GL_POINTS, 0, vertices_num);
 
         glfwSwapBuffers(window);
         glfwPollEvents();
